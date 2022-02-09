@@ -4,6 +4,7 @@ import { BehaviorSubject } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import { Basket, IBasket, IBasketItem, IBasketTotals } from '../shared/models/basket';
+import { IDeliveryMethod } from '../shared/models/deliveryMethods';
 import { IProduct } from '../shared/models/product';
 
 @Injectable({
@@ -18,9 +19,16 @@ export class BasketService {
   private basketTotalSource = new BehaviorSubject<IBasketTotals>(null);
   basketTotal$ = this.basketTotalSource.asObservable();
 
+  shipping = 0;
 
 
   constructor(private http: HttpClient) {
+  }
+
+  setShippingPrice(deliveryMethod: IDeliveryMethod)
+  {
+    this.shipping = deliveryMethod.price;
+    this.calculateTotals();
   }
 
   // Here we are not subscribing to our observable we get back from our http client. What we are going to use to subscribe is the async pipe (|)
@@ -109,6 +117,12 @@ export class BasketService {
     });
   }
 
+  deleteLocalBasket(id: string){
+    this.basketSource.next(null);
+    this.basketTotalSource.next(null);
+    localStorage.removeItem('basket_id');
+  }
+
 
   private addOrUpdateItem(items: IBasketItem[], itemToAdd: IBasketItem, quantity: number): IBasketItem[] {
     const index = items.findIndex(i => i.id === itemToAdd.id);
@@ -142,7 +156,7 @@ export class BasketService {
 
   private calculateTotals() {
     const basket = this.getCurrentBasketValue();
-    const shipping = 0;
+    const shipping = this.shipping;
     //  'a' represents the number, the result that we're returning from the below produce function. We are giving the initial value of 0. 
     const subtotal = basket.items.reduce((a, b) => (b.price * b.quantity) + a, 0);
     const total = subtotal + shipping;
